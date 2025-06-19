@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clima - 5 Dias</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: url('fundo.jpg') no-repeat center center fixed;
+      background-size: cover;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      transition: background 0.5s, color 0.5s;
+    }
+
+    .app-clima {
+      background: rgba(43, 43, 43, 0.2);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      width: 400px;
+      overflow-y: auto;
+      max-height: 90vh;
+
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+
+    .app-clima::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .app-clima::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .app-clima::-webkit-scrollbar-thumb {
+      background-color: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    .caixa-pesquisa input {
+      padding: 12px;
+      width: 80%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      background: rgba(250, 249, 249, 0.2);
+      color: rgb(247, 247, 247);
+    }
+
+    .caixa-pesquisa button {
+      padding: 12px;
+      border: none;
+      background: rgba(0, 0, 0, 0.85);
+      color: rgb(255, 255, 255);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .caixa-pesquisa button:hover {
+      background: rgb(89, 0, 255);
+    }
+
+    .escondido {
+      display: none;
+      color: rgb(180, 214, 243);
+    }
+
+    .previsao-dia {
+      margin: 10px 0;
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-clima">
+    <h1>Clima</h1>
+
+    <div class="caixa-pesquisa">
+      <input type="text" id="cidade-input" placeholder="Digite o nome da cidade">
+      <button id="buscar-btn">Buscar</button>
+    </div>
+
+    <p id="mensagem" class="escondido"></p>
+
+    <div id="resultado-clima" class="escondido">
+      <h2 id="nome-cidade"></h2>
+      <img id="icone-clima" class="escondido" src="" alt="Ícone do clima">
+      <p id="temperatura"></p>
+      <p id="descricao"></p>
+      <p id="umidade"></p>
+      <p id="vento"></p>
+    </div>
+
+    <div id="previsao-5dias" class="escondido">
+      <h3>Previsão para 5 dias:</h3>
+      <div id="dias-previsao"></div>
+    </div>
+  </div>
+
+  <script>
+    const apiKey = 'bd5e378503939ddaee76f12ad7a97608';
+
+    document.getElementById('buscar-btn').addEventListener('click', buscarClima);
+
+    async function buscarClima() {
+      const cidadeInput = document.getElementById('cidade-input');
+      const cidade = cidadeInput.value.trim();
+      const mensagem = document.getElementById('mensagem');
+      const resultado = document.getElementById('resultado-clima');
+      const iconeClima = document.getElementById('icone-clima');
+      const previsaoContainer = document.getElementById('previsao-5dias');
+      const diasPrevisao = document.getElementById('dias-previsao');
+
+      mensagem.textContent = '';
+      mensagem.classList.add('escondido');
+      resultado.classList.add('escondido');
+      previsaoContainer.classList.add('escondido');
+      iconeClima.classList.add('escondido');
+      diasPrevisao.innerHTML = '';
+
+      if (!cidade) {
+        mensagem.textContent = 'Por favor, digite o nome de uma cidade!';
+        mensagem.classList.remove('escondido');
+        return;
+      }
+
+      try {
+        const apiGeo = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cidade)}&appid=${apiKey}&units=metric&lang=pt_br`;
+        const resGeo = await fetch(apiGeo);
+
+        if (!resGeo.ok) {
+          throw new Error(resGeo.status === 404 ? 'Cidade não encontrada.' : 'Erro ao buscar os dados.');
+        }
+
+        const dados = await resGeo.json();
+        const { lat, lon } = dados.coord;
+
+        // Exibir clima atual
+        document.getElementById('nome-cidade').textContent = `${dados.name}, ${dados.sys.country}`;
+        document.getElementById('temperatura').textContent = `Temperatura: ${Math.round(dados.main.temp)}°C`;
+        document.getElementById('descricao').textContent = `Condição: ${dados.weather[0].description}`;
+        document.getElementById('umidade').textContent = `Umidade: ${dados.main.humidity}%`;
+        document.getElementById('vento').textContent = `Vento: ${dados.wind.speed} m/s`;
+
+        const iconCode = dados.weather[0].icon;
+        iconeClima.src = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
+        iconeClima.classList.remove('escondido');
+        resultado.classList.remove('escondido');
+
+        // Buscar previsão para 5 dias
+        const apiPrevisao = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=pt_br`;
+        const resPrevisao = await fetch(apiPrevisao);
+        const dadosPrevisao = await resPrevisao.json();
+
+        const diasExibidos = new Set();
+
+        for (let item of dadosPrevisao.list) {
+          const data = new Date(item.dt * 1000);
+          const dia = data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+
+          // Mostrar só 1 previsão por dia (por exemplo, a das 12h)
+          if (data.getHours() === 12 && !diasExibidos.has(dia)) {
+            diasExibidos.add(dia);
+
+            const divDia = document.createElement('div');
+            divDia.classList.add('previsao-dia');
+            divDia.innerHTML = `
+              <strong>${dia}</strong><br>
+              Temp: ${Math.round(item.main.temp)}°C<br>
+              ${item.weather[0].description}<br>
+              <img src="https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png" alt="Ícone clima">
+            `;
+            diasPrevisao.appendChild(divDia);
+
+            if (diasExibidos.size >= 5) break;
+          }
+        }
+
+        if (diasExibidos.size > 0) {
+          previsaoContainer.classList.remove('escondido');
+        }
+
+        cidadeInput.value = '';
+
+      } catch (error) {
+        mensagem.textContent = error.message;
+        mensagem.classList.remove('escondido');
+      }
+    }
+  </script>
+</body>
+</html>
