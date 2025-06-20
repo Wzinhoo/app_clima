@@ -160,7 +160,6 @@
         iconeClima.classList.remove('escondido');
         resultado.classList.remove('escondido');
 
-        // Buscar previsão para 5 dias
         const apiPrevisao = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric&lang=pt_br`;
         const resPrevisao = await fetch(apiPrevisao);
         const dadosPrevisao = await resPrevisao.json();
@@ -171,7 +170,6 @@
           const data = new Date(item.dt * 1000);
           const dia = data.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
 
-          // Mostrar só 1 previsão por dia (por exemplo, a das 12h)
           if (data.getHours() === 12 && !diasExibidos.has(dia)) {
             diasExibidos.add(dia);
 
